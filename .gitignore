@@ -1,0 +1,11 @@
+# Tool build scripts (đóng gói, splash, spec) — code tool
+.vscode/
+
+# Built exe
+bin/
+
+# Python cache
+__pycache__/
+
+# Database ghi nhớ lựa chọn file (tạo ra khi chạy)
+*.db.txt
