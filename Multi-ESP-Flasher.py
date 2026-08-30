@@ -173,6 +173,7 @@ def banner():
 def _close_splash():
     try:
         import pyi_splash
+        time.sleep(3.0)   # tăng thời gian hiển thị splash (hình giới thiệu) lên 3 giây
         pyi_splash.close()
     except Exception:
         pass
@@ -601,6 +602,13 @@ def configure_product_files(product_name, product_dir, db, save_to_db=True):
 
     idx = 0
     entered = False
+
+    def _persist():
+        """Lưu ngay mapping hiện tại vào db (nếu có lưu)."""
+        if save_to_db:
+            db[product_name] = mapping
+            save_db(db)
+
     while True:
         items = []
         for kind in KINDS_ALL:
@@ -656,13 +664,13 @@ def configure_product_files(product_name, product_dir, db, save_to_db=True):
             value = items[idx][1]
             if value != "__done__" and value in mapping:
                 del mapping[value]
+                _persist()
                 ok(f"Đã xoá lựa chọn {value}.bin.")
         elif key == "enter":
             value = items[idx][1]
             if value == "__done__":
                 if save_to_db:
-                    db[product_name] = mapping
-                    save_db(db)
+                    _persist()
                     ok("Đã lưu lựa chọn file vào db.")
                 else:
                     ok("Không lưu lựa chọn (chế độ file ngoài).")
@@ -676,7 +684,11 @@ def configure_product_files(product_name, product_dir, db, save_to_db=True):
             path = pick_single(value, default_dir)
             if path:
                 mapping[value] = path
+                _persist()
+                ok(f"Đã lưu lựa chọn {value}.bin.")
         elif key == "esc":
+            # Lưu lần cuối trước khi quay lại/đóng ứng dụng
+            _persist()
             return None
     return mapping
 
