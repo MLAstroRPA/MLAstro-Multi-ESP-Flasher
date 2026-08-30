@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-MLAstro-Multi-ESP-Flasher
-=========================
+Multi-ESP-Flasher
+=================
 Công cụ CLI flash LIÊN TỤC (multi-flash) cho nhiều thiết bị ESP32.
 
-Điểm khác Multi-ESP-Flasher:
+Tính năng:
     - BƯỚC 1: quét các THƯ MỤC CON cùng cấp với file exe để liệt kê sản phẩm phần cứng.
     - BƯỚC 2: sau khi chọn sản phẩm, chọn LẦN LƯỢT 4 file bin
               (bootloader, partitions, firmware, spiffs) + mục thứ 5 cho
@@ -27,8 +27,8 @@ import ctypes
 import subprocess
 
 APP_VERSION = "1.0.0"
-APP_NAME = "MLAstro-Multi-ESP-Flasher"
-DB_FILE = "MLAstro-Multi-ESP-Flasher.db.txt"
+APP_NAME = "Multi-ESP-Flasher"
+DB_FILE = "Multi-ESP-Flasher.db.txt"
 
 IS_WINDOWS = os.name == "nt"
 
@@ -163,7 +163,7 @@ def err(msg):  print(red("[ERR] ") + msg)
 
 def banner():
     print("=" * 62)
-    print("          M L A S T R O - M U L T I - E S P - F L A S H E R   v" + APP_VERSION)
+    print("          M U L T I - E S P - F L A S H E R   v" + APP_VERSION)
     print("        Quét sản phẩm & flash liên tục nhiều thiết bị ESP32")
     print("   bootloader.bin | partitions.bin | firmware.bin | spiffs.bin")
     print("=" * 62)
@@ -513,7 +513,7 @@ def short_path(p):
 def scan_products():
     """Quét các THƯ MỤC CON nằm CÙNG CẤP với file exe (trong thư mục chứa exe).
 
-    Ví dụ: exe ở bin/MLAstro-Multi-ESP-Flasher.exe -> quét bin/TestFolder, ...
+    Ví dụ: exe ở bin/Multi-ESP-Flasher.exe -> quét bin/TestFolder, ...
     """
     base = exe_dir()
     products = []

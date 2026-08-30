@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal
-title MLAstro-Multi-ESP-Flasher
+title Multi-ESP-Flasher
 cd /d "%~dp0"
 
 where py >nul 2>nul
@@ -26,14 +26,14 @@ if errorlevel 1 goto :bad_python
 goto :run
 
 :run
-%PYEXE% "MLAstro-Multi-ESP-Flasher.py"
+%PYEXE% "Multi-ESP-Flasher.py"
 set "RC=%ERRORLEVEL%"
 exit /b %RC%
 
 :no_python
 echo.
 echo ============================================================
-echo  MLAstro-Multi-ESP-Flasher
+echo  Multi-ESP-Flasher
 echo  Python 3 was NOT found on this machine.
 echo  This tool needs Python 3 to run.
 echo ============================================================
