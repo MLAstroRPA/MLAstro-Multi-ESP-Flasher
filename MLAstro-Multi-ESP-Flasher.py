@@ -822,6 +822,55 @@ def wait_online_countdown(port):
     return True
 
 
+def play_success_bell():
+    """Phát tiếng chuông sắt "tinggg" ngay khi flash xong (Windows)."""
+    if not IS_WINDOWS:
+        return
+    try:
+        import wave
+        import math
+        import struct
+        import random
+        import tempfile
+        import winsound
+    except Exception:
+        return
+    try:
+        SR = 44100
+        F0 = 2500.0
+        DUR = 1.6
+        # (amp, ratio, decay) - partials phi điều hoà + tắt dần khác nhau => chuông sắt
+        PARTS = [
+            (0.85, 1.0,    1.0),   # fundamental - ngân dài nhất
+            (0.85, 1.0025, 1.0),   # gần fundamental -> "beating" kim loại
+            (0.50, 2.0,    1.6),   # octave
+            (0.35, 2.76,   2.5),   # partial phi điều hoà ("clang")
+            (0.15, 5.4,    4.3),   # partial cao - tắt rất nhanh
+        ]
+        random.seed(42)
+        noise = [random.uniform(-1.0, 1.0) for _ in range(int(SR * 0.004))]
+        frames = bytearray()
+        for i in range(int(SR * DUR)):
+            t = i / SR
+            v = 0.0
+            for amp, ratio, dec in PARTS:
+                f = F0 * ratio
+                v += amp * math.sin(2 * math.pi * f * t) * math.exp(-dec * t)
+            if i < len(noise):
+                v += noise[i] * 0.25 * math.exp(-60.0 * t)   # tiếng "tick" lúc gõ
+            v = max(-1.0, min(1.0, v * 0.30))
+            frames += struct.pack('<h', int(v * 32767))
+        path = os.path.join(tempfile.gettempdir(), "mlastro_bell.wav")
+        with wave.open(path, "w") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(SR)
+            w.writeframes(bytes(frames))
+        winsound.PlaySound(path, winsound.SND_FILENAME)
+    except Exception:
+        pass
+
+
 def run_multi_flash(port, mapping, mode):
     info(f"Bắt đầu flash lên {bold(port)} ...")
     print("  LƯU Ý: không cho phép thoát (ESC) trong lúc đang flash.")
@@ -830,6 +879,7 @@ def run_multi_flash(port, mapping, mode):
         err("Flash THẤT BẠI. Kiểm tra cổng COM / kết nối rồi thử lại.")
         return "error"
     ok("Flash thành công!")
+    play_success_bell()
 
     if mode == "confirm":
         print()
