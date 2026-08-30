@@ -212,7 +212,7 @@ def _getch_timeout(timeout):
 
 
 def read_key(blocking=True):
-    """Đọc phím. Trả về: up/down/left/right/esc/enter/refresh/f5/key/None."""
+    """Đọc phím. Trả về: up/down/left/right/esc/enter/refresh/f5/del/key/None."""
     if msvcrt is None:
         return None
     if not blocking and not msvcrt.kbhit():
@@ -222,7 +222,8 @@ def read_key(blocking=True):
         ch2 = _getch_timeout(0.1)
         if ch2 is None:
             return "ext"
-        return {b"H": "up", b"P": "down", b"K": "left", b"M": "right"}.get(ch2, "ext")
+        return {b"H": "up", b"P": "down", b"K": "left", b"M": "right",
+                b"S": "del"}.get(ch2, "ext")
     if ch == b"\x1b":
         if blocking:
             time.sleep(0.03)
@@ -590,8 +591,9 @@ def sync_products_db(db, product_names):
 # ---------------------------------------------------------------------------
 # BƯỚC 2 - Chọn lần lượt 4 file bin (+ combine.bin) cho sản phẩm
 # ---------------------------------------------------------------------------
-def configure_product_files(product_name, product_dir, db):
-    """BƯỚC 2: menu chọn LẦN LƯỢT các file bin cho sản phẩm; lưu vào db."""
+def configure_product_files(product_name, product_dir, db, save_to_db=True):
+    """BƯỚC 2: menu chọn LẦN LƯỢT các file bin cho sản phẩm; lưu vào db
+    (save_to_db=False khi chọn file ngoài, không ghi nhớ db)."""
     # Chỉ nạp lại các file db tồn tại thật trên đĩa;
     # không có db hoặc file không tìm thấy -> để "(chưa chọn)"
     mapping = {k: p for k, p in (db.get(product_name, {}) or {}).items()
@@ -616,10 +618,15 @@ def configure_product_files(product_name, product_dir, db):
             idx = len(items) - 1
             entered = True
 
+        title = (f"  BƯỚC 2: CHỌN FILE CHO SẢN PHẨM \"{product_name}\""
+                 if save_to_db else "  BƯỚC 2: CHỌN FILE BIN NGOÀI (KHÔNG LƯU)")
+        note = ("  ENTER tại 'Tiếp theo >>>' để lưu & tiếp tục."
+                if save_to_db else "  ENTER tại 'Tiếp theo >>>' để tiếp tục (không lưu).")
         header = [
             "=" * 62,
-            f"  BƯỚC 2: CHỌN FILE CHO SẢN PHẨM \"{product_name}\"",
-            "  ↑/↓ chọn, ENTER để tiếp tục.",
+            title,
+            "  ↑/↓ chọn · ENTER mở hộp chọn file · DEL xoá lựa chọn",
+            note,
             "=" * 62,
             "",
         ]
@@ -645,18 +652,26 @@ def configure_product_files(product_name, product_dir, db):
             idx = (idx - 1) % len(items)
         elif key == "down":
             idx = (idx + 1) % len(items)
+        elif key == "del":
+            value = items[idx][1]
+            if value != "__done__" and value in mapping:
+                del mapping[value]
+                ok(f"Đã xoá lựa chọn {value}.bin.")
         elif key == "enter":
             value = items[idx][1]
             if value == "__done__":
-                db[product_name] = mapping
-                save_db(db)
-                ok("Đã lưu lựa chọn file vào db.")
+                if save_to_db:
+                    db[product_name] = mapping
+                    save_db(db)
+                    ok("Đã lưu lựa chọn file vào db.")
+                else:
+                    ok("Không lưu lựa chọn (chế độ file ngoài).")
                 return mapping
             default_dir = None
             cur = mapping.get(value)
             if cur and os.path.isfile(cur):
                 default_dir = os.path.dirname(cur)
-            if not default_dir and os.path.isdir(product_dir):
+            if not default_dir and product_dir and os.path.isdir(product_dir):
                 default_dir = product_dir
             path = pick_single(value, default_dir)
             if path:
@@ -957,21 +972,35 @@ def main():
     while True:
         products = scan_products()
         sync_products_db(db, [n for n, _ in products])
-        if not products:
-            warn("Không có thư mục sản phẩm nào (không tìm thấy thư mục con cùng cấp với exe).")
-            pause_end()
-            return 1
 
-        # BƯỚC 1: chọn sản phẩm phần cứng
-        product = select_product(products)
-        if product is None:
-            return 0    # ESC hủy -> đóng ứng dụng
-        product_dir = next((d for n, d in products if n == product), None)
+        product = None
+        product_dir = None
+        save_to_db = True
+
+        if not products:
+            # Không có thư mục sản phẩm -> cho phép chọn file bin NGOÀI (không lưu db)
+            print()
+            print(red("  KHÔNG TÌM THẤY THƯ MỤC SẢN PHẨM!"))
+            print(red("  Không có thư mục sản phẩm nào cùng cấp với file exe."))
+            print()
+            if not ask_yn(red("  Tiếp tục chọn file bin ngoài để flash?")):
+                return 0    # từ chối -> đóng ứng dụng
+            product = "(file ngoài)"
+            save_to_db = False
+        else:
+            # BƯỚC 1: chọn sản phẩm phần cứng
+            product = select_product(products)
+            if product is None:
+                return 0    # ESC hủy -> đóng ứng dụng
+            product_dir = next((d for n, d in products if n == product), None)
 
         # BƯỚC 2: chọn lần lượt các file bin (+ combine) - ghi nhớ db
-        mapping = configure_product_files(product, product_dir, db)
+        mapping = configure_product_files(product, product_dir, db, save_to_db=save_to_db)
         if mapping is None:
-            continue    # ESC -> quay lại chọn sản phẩm
+            continue    # ESC -> quay lại đầu (chọn sản phẩm / hỏi lại)
+        if not mapping:
+            warn("Không có file bin nào được chọn.")
+            continue
 
         # BƯỚC 3: chọn chế độ
         mode = select_mode_menu()
